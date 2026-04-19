@@ -1,0 +1,8 @@
+{
+  "appId": "com.worldexplorers.app",
+  "appName": "מגלי העולם",
+  "webDir": "../dist",
+  "android": {
+    "path": "."
+  }
+}

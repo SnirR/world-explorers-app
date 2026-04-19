@@ -1,0 +1,10 @@
+{
+  "name": "world-explorers-app-android",
+  "private": true,
+  "description": "Lets you run npx cap from this folder. Keep in sync with ../capacitor.config.ts (appId, appName, webDir).",
+  "scripts": {
+    "sync": "cd .. && npm run build && npx cap sync",
+    "sync:only": "cd .. && npx cap sync",
+    "open": "cd .. && npx cap open android"
+  }
+}

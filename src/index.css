@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --font-heebo: "Heebo", sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  direction: rtl;
+  font-family: "Heebo", sans-serif;
+}
+
+body {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #7dd3fc 100%);
+}
+
+.rsm-geography {
+  cursor: pointer;
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* City pin pulse animation */
+@keyframes cityPulse {
+  0%   { r: 9;  stroke-opacity: 0.6; }
+  70%  { r: 14; stroke-opacity: 0;   }
+  100% { r: 9;  stroke-opacity: 0;   }
+}
+
+/* Home screen fade-in */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

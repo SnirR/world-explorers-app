@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import HomeScreen from "./components/UI/HomeScreen";
 import WorldMap from "./components/WorldMap/WorldMap";
-import CountryCitiesMap from "./components/WorldMap/CountryCitiesMap";
 import IsraelMap from "./components/WorldMap/IsraelMap";
 import DiscoveryCounter from "./components/UI/DiscoveryCounter";
 import AudioToggle from "./components/UI/AudioToggle";
@@ -9,24 +8,21 @@ import { useDiscovery } from "./hooks/useDiscovery";
 import { useAudio } from "./hooks/useAudio";
 import { CONTINENTS } from "./data/continents";
 import { COUNTRIES } from "./data/countries";
-import { TOTAL_COUNTRY_CITIES } from "./data/countryCities";
 import { TOTAL_ISRAEL_CITIES } from "./data/israelCities";
 
-type GameMode = "continents" | "countries" | "country-cities" | "israel";
+type GameMode = "continents" | "countries" | "israel";
 type Screen = "home" | "map";
 
 const MODE_TOTALS: Record<GameMode, number> = {
-  continents:       CONTINENTS.length,
-  countries:        COUNTRIES.length,
-  "country-cities": TOTAL_COUNTRY_CITIES,
-  israel:           TOTAL_ISRAEL_CITIES,
+  continents: CONTINENTS.length,
+  countries:  COUNTRIES.length,
+  israel:     TOTAL_ISRAEL_CITIES,
 };
 
 const MODE_LABELS: Record<GameMode, string> = {
-  continents:       "יבשות",
-  countries:        "מדינות",
-  "country-cities": "ערים במדינות",
-  israel:           "ערי ישראל",
+  continents: "יבשות",
+  countries:  "מדינות",
+  israel:     "ערי ישראל",
 };
 
 export default function App() {
@@ -35,21 +31,18 @@ export default function App() {
 
   const { isMuted, toggleMute, speakHebrew } = useAudio();
 
-  const continentsDiscovery    = useDiscovery("continents");
-  const countriesDiscovery     = useDiscovery("countries");
-  const countryCitiesDiscovery = useDiscovery("country-cities");
-  const israelDiscovery        = useDiscovery("israel");
+  const continentsDiscovery = useDiscovery("continents");
+  const countriesDiscovery  = useDiscovery("countries");
+  const israelDiscovery     = useDiscovery("israel");
 
   const activeDiscovery =
-    mode === "continents"      ? continentsDiscovery :
-    mode === "countries"       ? countriesDiscovery  :
-    mode === "israel"          ? israelDiscovery     :
-    countryCitiesDiscovery;
+    mode === "continents" ? continentsDiscovery :
+    mode === "countries"  ? countriesDiscovery  :
+    israelDiscovery;
 
   const grandTotal =
     continentsDiscovery.totalDiscovered +
     countriesDiscovery.totalDiscovered +
-    countryCitiesDiscovery.totalDiscovered +
     israelDiscovery.totalDiscovered;
 
   const handleSelectMode = useCallback((selectedMode: GameMode) => {
@@ -69,10 +62,9 @@ export default function App() {
           onSelectMode={handleSelectMode}
           totalDiscovered={grandTotal}
           discoveredPerMode={{
-            continents:       continentsDiscovery.totalDiscovered,
-            countries:        countriesDiscovery.totalDiscovered,
-            "country-cities": countryCitiesDiscovery.totalDiscovered,
-            israel:           israelDiscovery.totalDiscovered,
+            continents: continentsDiscovery.totalDiscovered,
+            countries:  countriesDiscovery.totalDiscovered,
+            israel:     israelDiscovery.totalDiscovered,
           }}
         />
       </div>
@@ -144,13 +136,7 @@ export default function App() {
         </div>
       </div>
 
-      {mode === "country-cities" ? (
-        <CountryCitiesMap
-          discoveredSet={countryCitiesDiscovery.discovered}
-          onDiscover={countryCitiesDiscovery.discover}
-          speakHebrew={speakHebrew}
-        />
-      ) : mode === "israel" ? (
+      {mode === "israel" ? (
         <IsraelMap
           discoveredSet={israelDiscovery.discovered}
           onDiscover={israelDiscovery.discover}

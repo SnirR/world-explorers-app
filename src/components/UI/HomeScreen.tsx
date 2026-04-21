@@ -1,9 +1,8 @@
 import { CONTINENTS } from "../../data/continents";
 import { COUNTRIES } from "../../data/countries";
-import { TOTAL_COUNTRY_CITIES } from "../../data/countryCities";
 import { TOTAL_ISRAEL_CITIES } from "../../data/israelCities";
 
-type GameMode = "continents" | "countries" | "country-cities" | "israel";
+type GameMode = "continents" | "countries" | "israel";
 
 interface HomeScreenProps {
   onSelectMode: (mode: GameMode) => void;
@@ -34,14 +33,6 @@ const modes: {
     total: COUNTRIES.length,
     gradient: "linear-gradient(135deg, #10b981, #059669)",
     shadow: "0 8px 24px rgba(16, 185, 129, 0.45)",
-  },
-  {
-    id: "country-cities",
-    emoji: "🏘️",
-    label: "ערים במדינות",
-    total: TOTAL_COUNTRY_CITIES,
-    gradient: "linear-gradient(135deg, #ec4899, #be185d)",
-    shadow: "0 8px 24px rgba(236, 72, 153, 0.45)",
   },
   {
     id: "israel",

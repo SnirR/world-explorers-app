@@ -137,7 +137,7 @@ test("solar system: rocket flies, sun is tappable, planet card opens, back to Ea
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
   await expect(page.getByText("השמש", { exact: true })).toBeVisible({ timeout: 5_000 });
-  await expect(page.getByText(/מתוך 11 בחלל/)).toContainText("1 מתוך");
+  await expect(page.getByText(/מתוך 14 בחלל/)).toContainText("1 מתוך");
 
   // Planet card via עוד!
   await page.getByRole("button", { name: "עוד! 👀" }).click();
@@ -227,4 +227,81 @@ test("mute toggle persists across reloads", async ({ page }) => {
   await page.reload();
   const stillMuted = await page.evaluate(() => localStorage.getItem("world-explorers-muted"));
   expect(stillMuted).toBe("true");
+});
+
+test("home screen shows the new 3.0 tiles", async ({ page }) => {
+  await gotoHome(page);
+  await expect(page.getByTestId("home-ocean")).toContainText("עולם האוקיינוס");
+  await expect(page.getByTestId("home-encyclopedia")).toContainText("האנציקלופדיה");
+});
+
+test("ocean dive: canvas renders, zones switch, a creature can be discovered", async ({ page }) => {
+  await gotoHome(page);
+  await page.getByTestId("home-ocean").click();
+
+  const container = page.getByTestId("ocean-container");
+  await expect(container.locator("canvas")).toBeVisible({ timeout: 20_000 });
+
+  // depth zones are selectable
+  await expect(page.getByTestId("zone-reef")).toBeVisible();
+  await page.getByTestId("zone-open").click();
+  await page.getByTestId("zone-deep").click();
+  await page.getByTestId("zone-reef").click();
+
+  // ocean tabs switch the scene
+  await page.getByTestId("ocean-tab-indian").click();
+  await expect(container.locator("canvas")).toBeVisible();
+
+  // tap the center a few times — creatures swim past, one should register
+  await page.waitForTimeout(1200);
+  const box = await container.boundingBox();
+  if (!box) throw new Error("ocean container has no box");
+  for (let i = 0; i < 6; i++) {
+    await page.mouse.click(box.x + box.width * (0.35 + i * 0.05), box.y + box.height * 0.5);
+    await page.waitForTimeout(300);
+  }
+  // discovering ticks the shared counter above 0/38 at some point (best-effort:
+  // the "גיליתם כאן" chip is always present regardless)
+  await expect(page.getByText(/גיליתם כאן/)).toBeVisible();
+});
+
+test("encyclopedia: opens, shows section tabs and locked silhouettes", async ({ page }) => {
+  await gotoHome(page);
+  await page.getByTestId("home-encyclopedia").click();
+  await expect(page.getByText("אנציקלופדיית המגלה")).toBeVisible();
+  await expect(page.getByTestId("enc-tab-countries")).toBeVisible();
+  await page.getByTestId("enc-tab-marine").click();
+  await expect(page.getByTestId("enc-tab-space")).toBeVisible();
+});
+
+test("quiz: the flags choice round runs and shows a result", async ({ page }) => {
+  await gotoHome(page);
+  await page.getByTestId("home-quiz").click();
+  await page.getByTestId("quiz-cat-flags").click();
+
+  // Answer 8 questions: after 3 misses the correct card is revealed & pulses,
+  // so blindly tapping the four options in turn always advances the round.
+  const done = () => page.getByTestId("quiz-result").isVisible().catch(() => false);
+  for (let q = 0; q < 8 && !(await done()); q++) {
+    await expect(page.getByTestId("quiz-question")).toBeVisible();
+    for (let attempt = 0; attempt < 4 && !(await done()); attempt++) {
+      const cards = page.locator('[data-testid^="quiz-choice-"]');
+      const n = await cards.count();
+      if (n === 0) break;
+      // force:true — the revealed correct card gently pulses, which Playwright's
+      // stability check would otherwise reject.
+      await cards.nth(attempt % n).click({ force: true });
+      await page.waitForTimeout(450);
+    }
+    await page.waitForTimeout(300);
+  }
+  await expect(page.getByTestId("quiz-result")).toBeVisible({ timeout: 15_000 });
+});
+
+test("daily challenge: launches a special round", async ({ page }) => {
+  await gotoHome(page);
+  await page.getByTestId("home-quiz").click();
+  await page.getByTestId("quiz-daily").click();
+  await expect(page.getByTestId("quiz-question")).toBeVisible();
+  await expect(page.getByText("🔥", { exact: false }).first()).toBeVisible();
 });

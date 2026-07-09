@@ -1,6 +1,8 @@
 // Solar-system bodies for the space mode. Sizes/distances are stylized for
 // kids (NOT to scale) — chosen so everything is visible and tappable.
 
+import { SPACE_OBJECTS } from "./spaceObjects";
+
 export interface PlanetSpec {
   id: string;
   nameHebrew: string;
@@ -99,4 +101,5 @@ export const PLANETS: PlanetSpec[] = [
 ];
 
 export const PLANET_BY_ID = new Map(PLANETS.map((p) => [p.id, p]));
-export const TOTAL_SPACE_OBJECTS = PLANETS.length; // 11
+/** Planets + the extra space objects (belt/comet/ISS) share one discovery counter. */
+export const TOTAL_SPACE_OBJECTS = PLANETS.length + SPACE_OBJECTS.length; // 14

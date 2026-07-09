@@ -17,12 +17,14 @@ import type { GeoPermissibleObjects } from "d3-geo";
 import { CONTINENTS } from "../data/continents";
 import { getContinentId } from "../data/continentMapping";
 import { COUNTRY_BY_ID } from "../data/countries";
-import { makeStarField, addNebulae, makeAtmosphere } from "./proceduralTextures";
+import { oceanAt } from "../data/oceans";
+import type { SeasonSpec } from "../data/seasons";
+import { makeStarField, addNebulae, makeAtmosphere, mulberry32 } from "./proceduralTextures";
 
 export type GlobeMode = "continents" | "countries";
 
 export interface GlobePick {
-  kind: GlobeMode;
+  kind: GlobeMode | "ocean";
   id: string;
   screenX: number;
   screenY: number;
@@ -136,6 +138,9 @@ export class GlobeScene {
   private mode: GlobeMode;
   private discovered: Set<string>;
   private night: boolean;
+  private season: SeasonSpec | null = null;
+  private nightShade: THREE.Mesh | null = null;
+  private sunLight!: THREE.DirectionalLight;
   private reducedMotion: boolean;
   private onPick: (pick: GlobePick | null) => void;
   private onMaxZoomOut?: () => void;
@@ -212,9 +217,9 @@ export class GlobeScene {
 
     // ── Lights ──
     const ambient = new THREE.AmbientLight(0xffffff, 1.35);
-    const dir = new THREE.DirectionalLight(0xffffff, 1.1);
-    dir.position.set(-180, 130, 240);
-    this.scene.add(ambient, dir);
+    this.sunLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    this.sunLight.position.set(-180, 130, 240);
+    this.scene.add(ambient, this.sunLight);
 
     // ── Stars + nebulae ──
     this.scene.add(makeStarField(2200, 900, 1800, 11));
@@ -228,6 +233,42 @@ export class GlobeScene {
     // ── Atmosphere ──
     this.atmosphere = makeAtmosphere(R * 1.18, 0x5aa7ff, 1.0);
     this.scene.add(this.atmosphere);
+
+    // ── Day/night terminator shade (seasons mode) ──
+    // Added to the scene (not the globe group), so it stays fixed relative to
+    // the sun while the globe rotates beneath it — a real terminator.
+    this.nightShade = new THREE.Mesh(
+      new THREE.SphereGeometry(R * 1.006, 64, 64),
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          sunDir: { value: new THREE.Vector3(0.4, 0, 0.92).normalize() },
+          strength: { value: 0.0 },
+        },
+        vertexShader: /* glsl */ `
+          varying vec3 vWorldNormal;
+          void main() {
+            vWorldNormal = normalize(mat3(modelMatrix) * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          uniform vec3 sunDir;
+          uniform float strength;
+          varying vec3 vWorldNormal;
+          void main() {
+            float d = dot(normalize(vWorldNormal), normalize(sunDir));
+            float night = smoothstep(0.14, -0.2, d);
+            // warm twilight ribbon right at the terminator line
+            float twilight = smoothstep(0.2, 0.0, abs(d)) * 0.25;
+            vec3 color = mix(vec3(0.01, 0.02, 0.09), vec3(0.45, 0.22, 0.1), twilight);
+            gl_FragColor = vec4(color, night * strength);
+          }
+        `,
+      })
+    );
+    this.scene.add(this.nightShade);
 
     // ── Events ──
     const el = this.renderer.domElement;
@@ -355,11 +396,99 @@ export class GlobeScene {
     ctx.fillText("⭐", pt[0], pt[1]);
   }
 
+  /** y coordinate on the texture for a given latitude. */
+  private latY(lat: number): number {
+    return ((90 - lat) / 180) * TEX_H;
+  }
+
+  /** Seasonal overlay: hemisphere land tints + polar snow/ice caps. */
+  private paintSeason(ctx: CanvasRenderingContext2D) {
+    const s = this.season;
+    if (!s) return;
+
+    const tintHemisphere = (fill: string, north: boolean) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, north ? 0 : TEX_H / 2, TEX_W, TEX_H / 2);
+      ctx.clip();
+      ctx.fillStyle = fill;
+      for (const f of this.features) {
+        ctx.beginPath();
+        this.pathGen.context(ctx as unknown as CanvasRenderingContext2D)(f as unknown as GeoPermissibleObjects);
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+    tintHemisphere(s.tintNorth, true);
+    tintHemisphere(s.tintSouth, false);
+
+    // polar caps (sea ice + snow), soft gradient edge, per-hemisphere extent
+    const northEdge = this.latY(s.snowLatNorth);
+    const gN = ctx.createLinearGradient(0, 0, 0, northEdge + 26);
+    gN.addColorStop(0, "rgba(255,255,255,0.92)");
+    gN.addColorStop(0.75, "rgba(255,255,255,0.55)");
+    gN.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = gN;
+    ctx.fillRect(0, 0, TEX_W, northEdge + 26);
+
+    const southEdge = this.latY(s.snowLatSouth);
+    const gS = ctx.createLinearGradient(0, southEdge - 26, 0, TEX_H);
+    gS.addColorStop(0, "rgba(255,255,255,0)");
+    gS.addColorStop(0.25, "rgba(255,255,255,0.55)");
+    gS.addColorStop(1, "rgba(255,255,255,0.92)");
+    ctx.fillStyle = gS;
+    ctx.fillRect(0, southEdge - 26, TEX_W, TEX_H - (southEdge - 26));
+  }
+
+  /** Night mode: warm city lights inside DISCOVERED regions only. */
+  private paintCityLights(ctx: CanvasRenderingContext2D) {
+    if (!this.night) return;
+    for (const f of this.features) {
+      const litRegion =
+        this.mode === "continents"
+          ? this.discovered.has(getContinentId(f.id))
+          : COUNTRY_BY_ID.has(f.id) && this.discovered.has(f.id);
+      if (!litRegion) continue;
+
+      const [[minLng, minLat], [maxLng, maxLat]] = f.bounds;
+      const lngSpan = minLng <= maxLng ? maxLng - minLng : 360 - (minLng - maxLng);
+      const latSpan = maxLat - minLat;
+      const area = Math.abs(lngSpan * latSpan);
+      const wanted = Math.min(14, Math.max(3, Math.round(area / 60)));
+
+      let h = 0;
+      for (let i = 0; i < f.id.length; i++) h = (h * 31 + f.id.charCodeAt(i)) | 0;
+      const rng = mulberry32(h >>> 0);
+
+      let placed = 0;
+      for (let attempt = 0; attempt < wanted * 4 && placed < wanted; attempt++) {
+        let lng = minLng + rng() * lngSpan;
+        if (lng > 180) lng -= 360;
+        const lat = minLat + rng() * latSpan;
+        if (!geoContains(f as unknown as GeoPermissibleObjects, [lng, lat])) continue;
+        const pt = this.projection([lng, lat]);
+        if (!pt) continue;
+        const r = 1.4 + rng() * 1.6;
+        ctx.fillStyle = "rgba(255,200,110,0.28)";
+        ctx.beginPath();
+        ctx.arc(pt[0], pt[1], r * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#ffd894";
+        ctx.beginPath();
+        ctx.arc(pt[0], pt[1], r, 0, Math.PI * 2);
+        ctx.fill();
+        placed++;
+      }
+    }
+  }
+
   /** Full repaint of the base texture. */
   paintBase() {
     const ctx = this.baseCtx;
     this.paintOcean(ctx);
     for (const f of this.features) this.paintFeature(ctx, f);
+    this.paintSeason(ctx);
+    this.paintCityLights(ctx);
 
     // Discovery stars
     if (this.mode === "continents") {
@@ -398,6 +527,11 @@ export class GlobeScene {
 
   /** Incremental: repaint one feature (or a continent's features) as discovered. */
   private repaintDiscovered(id: string) {
+    if (this.season || this.night) {
+      // overlays (tints/snow/lights) must be re-applied on top — full repaint
+      this.paintBase();
+      return;
+    }
     const ctx = this.baseCtx;
     if (this.mode === "continents") {
       for (const f of this.features) {
@@ -465,6 +599,25 @@ export class GlobeScene {
     this.night = night;
     this.scene.background = new THREE.Color(night ? "#03040c" : "#070c1e");
     this.paintBase();
+  }
+
+  /** Season mode: repaint the world + aim the sun + show the terminator. */
+  setSeason(season: SeasonSpec | null) {
+    if (this.season?.id === season?.id) return;
+    this.season = season;
+    this.paintBase();
+    if (this.nightShade) {
+      const mat = this.nightShade.material as THREE.ShaderMaterial;
+      mat.uniforms.strength.value = season ? 0.62 : 0.0;
+      if (season) {
+        const decl = (season.sunDeclination * Math.PI) / 180;
+        const dir = new THREE.Vector3(0.42 * Math.cos(decl), Math.sin(decl), 0.9 * Math.cos(decl)).normalize();
+        mat.uniforms.sunDir.value.copy(dir);
+        this.sunLight.position.copy(dir.clone().multiplyScalar(400));
+      } else {
+        this.sunLight.position.set(-180, 130, 240);
+      }
+    }
   }
 
   setSelected(id: string | null) {
@@ -586,7 +739,10 @@ export class GlobeScene {
         best = f;
       }
     }
-    return best ? this.pickFromFeature(best, clientX, clientY) : null;
+    if (best) return this.pickFromFeature(best, clientX, clientY);
+
+    // No land anywhere near → the child tapped an ocean 🌊
+    return { kind: "ocean", id: oceanAt(lat, lng), screenX: clientX, screenY: clientY };
   }
 
   private pickFromFeature(f: CountryFeature, screenX: number, screenY: number): GlobePick | null {

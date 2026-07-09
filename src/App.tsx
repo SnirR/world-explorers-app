@@ -1,12 +1,14 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useMemo, useState } from "react";
 import HomeScreen, { type HomeTarget } from "./components/UI/HomeScreen";
+import LaunchOverlay, { type Flight } from "./components/Space/LaunchOverlay";
 import GlobeView from "./components/Globe/GlobeView";
 import Map2DView from "./components/WorldMap/Map2DView";
 import IsraelMap from "./components/WorldMap/IsraelMap";
 import SolarSystemView from "./components/Space/SolarSystemView";
+import OceanDiveView from "./components/Ocean/OceanDiveView";
 import QuizView from "./components/Quiz/QuizView";
 import StickerAlbum from "./components/Album/StickerAlbum";
+import Encyclopedia from "./components/Explorer/Encyclopedia";
 import StickerCelebration from "./components/Album/StickerCelebration";
 import ParentalGate from "./components/UI/ParentalGate";
 import DiscoveryCounter from "./components/UI/DiscoveryCounter";
@@ -19,9 +21,11 @@ import { CONTINENTS } from "./data/continents";
 import { COUNTRIES } from "./data/countries";
 import { TOTAL_ISRAEL_CITIES } from "./data/israelCities";
 import { TOTAL_SPACE_OBJECTS } from "./data/planets";
+import { TOTAL_MARINE_CREATURES } from "./data/marineLife";
+import type { OceanId } from "./data/oceans";
 import { STICKERS } from "./lib/stickers";
 
-type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "quiz" | "album";
+type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "ocean" | "quiz" | "album" | "encyclopedia";
 type WorldMode = "continents" | "countries";
 
 const SCREEN_LABELS: Record<Screen, string> = {
@@ -30,8 +34,10 @@ const SCREEN_LABELS: Record<Screen, string> = {
   map2d: "מפה שטוחה",
   israel: "ערי ישראל",
   space: "מערכת השמש",
+  ocean: "עולם האוקיינוס",
   quiz: "חידון",
   album: "אלבום מדבקות",
+  encyclopedia: "האנציקלופדיה",
 };
 
 const topBtn: React.CSSProperties = {
@@ -53,7 +59,14 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [worldMode, setWorldMode] = useState<WorldMode>("continents");
   const [gateOpen, setGateOpen] = useState(false);
-  const [rocketFlight, setRocketFlight] = useState(false);
+  const [flight, setFlight] = useState<Flight | null>(null);
+  const [oceanStart, setOceanStart] = useState<OceanId | undefined>(undefined);
+
+  // Local calendar day (YYYY-MM-DD) for the daily challenge — offline, no clock in pure logic.
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
 
   const { isMuted, toggleMute, speakHebrew, speakLang } = useAudio();
   const { play } = useSfx(isMuted);
@@ -62,6 +75,9 @@ export default function App() {
   const countriesDiscovery = useDiscovery("countries");
   const israelDiscovery = useDiscovery("israel");
   const planetsDiscovery = useDiscovery("planets");
+  const constellationsDiscovery = useDiscovery("constellations");
+  const oceanDiscovery = useDiscovery("ocean");
+  const visitedDiscovery = useDiscovery("visited");
 
   const progressSnapshot = useMemo(
     () => ({
@@ -69,12 +85,18 @@ export default function App() {
       countriesDiscovered: countriesDiscovery.discovered,
       israelDiscovered: israelDiscovery.totalDiscovered,
       planetsDiscovered: planetsDiscovery.totalDiscovered,
+      constellationsDiscovered: constellationsDiscovery.totalDiscovered,
+      oceanDiscovered: oceanDiscovery.discovered,
+      visitedCount: visitedDiscovery.totalDiscovered,
     }),
     [
       continentsDiscovery.discovered,
       countriesDiscovery.discovered,
       israelDiscovery.totalDiscovered,
       planetsDiscovery.totalDiscovered,
+      constellationsDiscovery.totalDiscovered,
+      oceanDiscovery.discovered,
+      visitedDiscovery.totalDiscovered,
     ]
   );
 
@@ -84,17 +106,15 @@ export default function App() {
     continentsDiscovery.totalDiscovered +
     countriesDiscovery.totalDiscovered +
     israelDiscovery.totalDiscovered +
-    planetsDiscovery.totalDiscovered;
+    planetsDiscovery.totalDiscovered +
+    constellationsDiscovery.totalDiscovered +
+    oceanDiscovery.totalDiscovered;
 
   const activeWorldDiscovery = worldMode === "continents" ? continentsDiscovery : countriesDiscovery;
 
-  // Fly a rocket between Earth screens and space 🚀
-  const flightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Fly a rocket between Earth screens and space 🚀 (cinematic sequence)
   const goWithRocket = useCallback((to: Screen) => {
-    setRocketFlight(true);
-    if (flightTimer.current) clearTimeout(flightTimer.current);
-    setTimeout(() => setScreen(to), 450);
-    flightTimer.current = setTimeout(() => setRocketFlight(false), 1000);
+    setFlight((cur) => cur ?? { to, dir: to === "space" ? "up" : "down" });
   }, []);
 
   const handleHomeSelect = useCallback(
@@ -118,20 +138,26 @@ export default function App() {
         return { count: israelDiscovery.totalDiscovered, total: TOTAL_ISRAEL_CITIES };
       case "space":
         return { count: planetsDiscovery.totalDiscovered, total: TOTAL_SPACE_OBJECTS };
+      case "ocean":
+        return { count: oceanDiscovery.totalDiscovered, total: TOTAL_MARINE_CREATURES };
       default:
         return null;
     }
   })();
 
-  const canReset = screen === "globe" || screen === "map2d" || screen === "israel" || screen === "space";
+  const canReset =
+    screen === "globe" || screen === "map2d" || screen === "israel" || screen === "space" || screen === "ocean";
 
   const doReset = useCallback(() => {
     setGateOpen(false);
     if (screen === "israel") israelDiscovery.resetProgress();
-    else if (screen === "space") planetsDiscovery.resetProgress();
+    else if (screen === "space") {
+      planetsDiscovery.resetProgress();
+      constellationsDiscovery.resetProgress();
+    } else if (screen === "ocean") oceanDiscovery.resetProgress();
     else activeWorldDiscovery.resetProgress();
     speakHebrew("ההתקדמות אופסה. יוצאים להרפתקה חדשה!");
-  }, [screen, israelDiscovery, planetsDiscovery, activeWorldDiscovery, speakHebrew]);
+  }, [screen, israelDiscovery, planetsDiscovery, constellationsDiscovery, oceanDiscovery, activeWorldDiscovery, speakHebrew]);
 
   // ── Home ──
   if (screen === "home") {
@@ -145,6 +171,7 @@ export default function App() {
             countries: countriesDiscovery.totalDiscovered,
             israel: israelDiscovery.totalDiscovered,
             planets: planetsDiscovery.totalDiscovered,
+            ocean: oceanDiscovery.totalDiscovered,
           }}
           stickersUnlocked={stickers.unlocked.size}
           stickersTotal={STICKERS.length}
@@ -159,7 +186,12 @@ export default function App() {
           speakHebrew={speakHebrew}
           playSfx={play}
         />
-        <RocketOverlay active={rocketFlight} />
+        <LaunchOverlay
+          flight={flight}
+          onArrive={(to) => setScreen(to as Screen)}
+          onDone={() => setFlight(null)}
+          speakHebrew={speakHebrew}
+        />
       </div>
     );
   }
@@ -234,8 +266,14 @@ export default function App() {
           playSfx={play}
           wordsHeard={stickers.wordsHeard}
           markWordHeard={stickers.markWordHeard}
+          markSeasonSeen={stickers.markSeasonSeen}
+          markVisited={(id) => visitedDiscovery.discover(id)}
           onGoTo2D={() => setScreen("map2d")}
           onGoSpace={() => goWithRocket("space")}
+          onDiveOcean={(ocean) => {
+            setOceanStart(ocean);
+            setScreen("ocean");
+          }}
         />
       )}
 
@@ -250,6 +288,7 @@ export default function App() {
           playSfx={play}
           wordsHeard={stickers.wordsHeard}
           markWordHeard={stickers.markWordHeard}
+          markVisited={(id) => visitedDiscovery.discover(id)}
           onGoTo3D={() => setScreen("globe")}
         />
       )}
@@ -266,9 +305,19 @@ export default function App() {
       {screen === "space" && (
         <SolarSystemView
           planetsDiscovery={planetsDiscovery}
+          constellationsDiscovery={constellationsDiscovery}
           speakHebrew={speakHebrew}
           playSfx={play}
           onBackToEarth={() => goWithRocket("globe")}
+        />
+      )}
+
+      {screen === "ocean" && (
+        <OceanDiveView
+          oceanDiscovery={oceanDiscovery}
+          speakHebrew={speakHebrew}
+          playSfx={play}
+          initialOcean={oceanStart}
         />
       )}
 
@@ -279,15 +328,35 @@ export default function App() {
             countries: countriesDiscovery.discovered,
             israel: israelDiscovery.discovered,
             planets: planetsDiscovery.discovered,
+            flags: countriesDiscovery.discovered,
+            marine: oceanDiscovery.discovered,
           }}
           speakHebrew={speakHebrew}
           playSfx={play}
           recordQuizResult={stickers.recordQuizResult}
+          today={todayStr}
+          dailyStreak={stickers.dailyStreak}
+          dailyDoneToday={stickers.dailyDoneToday(todayStr)}
+          onCompleteDaily={() => stickers.completeDaily(todayStr)}
         />
       )}
 
       {screen === "album" && (
         <StickerAlbum unlocked={stickers.unlocked} speakHebrew={speakHebrew} playSfx={play} />
+      )}
+
+      {screen === "encyclopedia" && (
+        <Encyclopedia
+          discovered={{
+            continents: continentsDiscovery.discovered,
+            countries: countriesDiscovery.discovered,
+            planets: planetsDiscovery.discovered,
+            constellations: constellationsDiscovery.discovered,
+            ocean: oceanDiscovery.discovered,
+          }}
+          speakHebrew={speakHebrew}
+          playSfx={play}
+        />
       )}
 
       {/* Overlays */}
@@ -302,37 +371,12 @@ export default function App() {
         speakHebrew={speakHebrew}
         playSfx={play}
       />
-      <RocketOverlay active={rocketFlight} />
+      <LaunchOverlay
+        flight={flight}
+        onArrive={(to) => setScreen(to as Screen)}
+        onDone={() => setFlight(null)}
+        speakHebrew={speakHebrew}
+      />
     </div>
-  );
-}
-
-/** Full-screen rocket transition between Earth and space. */
-function RocketOverlay({ active }: { active: boolean }) {
-  return (
-    <AnimatePresence>
-      {active && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 1, 0] }}
-          transition={{ duration: 1.0, times: [0, 0.35, 0.65, 1] }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-40 flex items-center justify-center"
-          style={{
-            background: "radial-gradient(ellipse at 50% 80%, #1e2a5e 0%, #0a0f2b 55%, #04060f 100%)",
-            pointerEvents: "none",
-          }}
-        >
-          <motion.div
-            initial={{ y: 220, scale: 0.8, rotate: 0 }}
-            animate={{ y: -280, scale: 1.25 }}
-            transition={{ duration: 1.0, ease: "easeIn" }}
-            style={{ fontSize: 84, filter: "drop-shadow(0 12px 24px rgba(255,160,60,0.6))" }}
-          >
-            🚀
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }

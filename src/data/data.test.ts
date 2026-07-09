@@ -8,6 +8,8 @@ import { COUNTRY_DETAILS, flagEmoji } from "./countryDetails";
 import { LANGUAGES, LANGUAGE_BY_ID } from "./languages";
 import { CONTINENT_DETAILS } from "./continentDetails";
 import { PLANETS, TOTAL_SPACE_OBJECTS } from "./planets";
+import { SPACE_OBJECTS } from "./spaceObjects";
+import { CONSTELLATIONS } from "./constellations";
 
 const CONTINENT_IDS = new Set(CONTINENTS.map((c) => c.id));
 
@@ -95,7 +97,7 @@ describe("continent details", () => {
 describe("planets data", () => {
   it("has the sun, 8 planets, the moon and Pluto", () => {
     expect(PLANETS.length).toBe(11);
-    expect(TOTAL_SPACE_OBJECTS).toBe(11);
+    expect(TOTAL_SPACE_OBJECTS).toBe(11 + SPACE_OBJECTS.length);
     expect(PLANETS[0].id).toBe("sun");
     const ids = PLANETS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -111,6 +113,47 @@ describe("planets data", () => {
     const orbiting = PLANETS.filter((p) => p.id !== "sun" && p.id !== "moon");
     for (let i = 1; i < orbiting.length; i++) {
       expect(orbiting[i].orbitRadius).toBeGreaterThan(orbiting[i - 1].orbitRadius);
+    }
+  });
+});
+
+describe("space objects & constellations data", () => {
+  it("space objects are well-formed and counted in the space total", () => {
+    expect(SPACE_OBJECTS.length).toBe(3);
+    expect(TOTAL_SPACE_OBJECTS).toBe(PLANETS.length + SPACE_OBJECTS.length);
+    const ids = SPACE_OBJECTS.map((o) => o.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const o of SPACE_OBJECTS) {
+      expect(o.nameHebrew.length).toBeGreaterThan(1);
+      expect(o.factHebrew.length).toBeGreaterThan(10);
+      expect(o.extraHebrew.length).toBeGreaterThan(5);
+      // no id collision with planets
+      expect(PLANETS.some((p) => p.id === o.id)).toBe(false);
+    }
+  });
+
+  it("constellations have valid star patterns and line indexes", () => {
+    expect(CONSTELLATIONS.length).toBe(10);
+    const ids = CONSTELLATIONS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const c of CONSTELLATIONS) {
+      expect(c.id.startsWith("const-")).toBe(true);
+      expect(c.nameHebrew.length).toBeGreaterThan(1);
+      expect(c.storyHebrew.length).toBeGreaterThan(10);
+      expect(c.stars.length).toBeGreaterThanOrEqual(4);
+      expect(c.lines.length).toBeGreaterThanOrEqual(2);
+      for (const [x, y] of c.stars) {
+        expect(x).toBeGreaterThanOrEqual(0);
+        expect(x).toBeLessThanOrEqual(1);
+        expect(y).toBeGreaterThanOrEqual(0);
+        expect(y).toBeLessThanOrEqual(1);
+      }
+      for (const [i, j] of c.lines) {
+        expect(i).toBeGreaterThanOrEqual(0);
+        expect(i).toBeLessThan(c.stars.length);
+        expect(j).toBeGreaterThanOrEqual(0);
+        expect(j).toBeLessThan(c.stars.length);
+      }
     }
   });
 });

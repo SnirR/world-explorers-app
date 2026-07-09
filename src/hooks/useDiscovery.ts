@@ -1,6 +1,15 @@
 import { useState, useCallback, useEffect } from "react";
 
-type GameMode = "continents" | "countries" | "cities" | "country-cities" | "israel" | "planets";
+type GameMode =
+  | "continents"
+  | "countries"
+  | "cities"
+  | "country-cities"
+  | "israel"
+  | "planets"
+  | "constellations"
+  | "ocean"
+  | "visited";
 
 const STORAGE_KEY_PREFIX = "world-explorers-discoveries";
 

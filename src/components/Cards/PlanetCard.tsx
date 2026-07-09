@@ -1,6 +1,7 @@
 // Planet / space-object info card.
 
 import { PLANET_BY_ID } from "../../data/planets";
+import { SPACE_OBJECT_BY_ID } from "../../data/spaceObjects";
 import InfoSheet from "./InfoSheet";
 
 interface PlanetCardProps {
@@ -11,7 +12,7 @@ interface PlanetCardProps {
 }
 
 export default function PlanetCard({ planetId, onClose, speakHebrew, playSfx }: PlanetCardProps) {
-  const planet = planetId ? PLANET_BY_ID.get(planetId) : undefined;
+  const planet = planetId ? PLANET_BY_ID.get(planetId) ?? SPACE_OBJECT_BY_ID.get(planetId) : undefined;
 
   return (
     <InfoSheet open={!!planet} onClose={onClose} accentColor={planet?.baseColor ?? "#3b82f6"}>
@@ -40,7 +41,7 @@ export default function PlanetCard({ planetId, onClose, speakHebrew, playSfx }: 
               >
                 {planet.nameHebrew} 🔊
               </div>
-              {planet.isDwarf && (
+              {"isDwarf" in planet && planet.isDwarf && (
                 <span
                   style={{
                     display: "inline-block",

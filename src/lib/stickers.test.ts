@@ -95,3 +95,27 @@ describe("3.0 stickers (stargazer / seasons)", () => {
     expect(computeUnlockedStickers(p).has("st-seasons")).toBe(true);
   });
 });
+
+describe("ocean stickers", () => {
+  it("dolphin friend at 15 creatures, ocean king when all found", async () => {
+    const { MARINE_LIFE } = await import("../data/marineLife");
+    const p = empty();
+    p.oceanDiscovered = new Set(MARINE_LIFE.slice(0, 15).map((c) => c.id));
+    let u = computeUnlockedStickers(p);
+    expect(u.has("st-dolphin")).toBe(true);
+    expect(u.has("st-ocean")).toBe(false);
+    p.oceanDiscovered = new Set(MARINE_LIFE.map((c) => c.id));
+    u = computeUnlockedStickers(p);
+    expect(u.has("st-ocean")).toBe(true);
+    expect(u.has("st-deep")).toBe(true);
+  });
+
+  it("deep explorer needs exactly the deep-zone creatures", async () => {
+    const { MARINE_LIFE } = await import("../data/marineLife");
+    const p = empty();
+    p.oceanDiscovered = new Set(MARINE_LIFE.filter((c) => c.zone === "deep").map((c) => c.id));
+    const u = computeUnlockedStickers(p);
+    expect(u.has("st-deep")).toBe(true);
+    expect(u.has("st-ocean")).toBe(false);
+  });
+});

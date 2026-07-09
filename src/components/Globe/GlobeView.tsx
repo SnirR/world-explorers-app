@@ -7,6 +7,8 @@ import { loadWorldTopo } from "../../three/loadWorldTopo";
 import { CONTINENTS } from "../../data/continents";
 import { COUNTRIES, COUNTRY_BY_ID, getCountryColor } from "../../data/countries";
 import { SEASON_BY_ID, type SeasonId } from "../../data/seasons";
+import { OCEAN_BY_ID, type OceanId, type OceanSpec } from "../../data/oceans";
+import InfoSheet from "../Cards/InfoSheet";
 import type { DiscoveryState } from "../../hooks/useDiscovery";
 import type { SfxName } from "../../hooks/useSfx";
 import NameRevealBubble from "../WorldMap/NameRevealBubble";
@@ -46,6 +48,7 @@ interface GlobeViewProps {
   markSeasonSeen: (id: SeasonId) => void;
   onGoTo2D: () => void;
   onGoSpace: () => void;
+  onDiveOcean: (ocean: OceanId) => void;
 }
 
 export default function GlobeView(props: GlobeViewProps) {
@@ -71,10 +74,11 @@ export default function GlobeView(props: GlobeViewProps) {
   const [rocketHint, setRocketHint] = useState(false);
   const [activeBubble, setActiveBubble] = useState<{
     id: string;
-    kind: GlobeMode;
+    kind: GlobeMode | "ocean";
     name: string;
     color: string;
   } | null>(null);
+  const [oceanCardId, setOceanCardId] = useState<OceanId | null>(null);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [confettiOrigin, setConfettiOrigin] = useState({ x: 0.5, y: 0.5 });
   const [milestone, setMilestone] = useState<string | null>(null);
@@ -97,6 +101,17 @@ export default function GlobeView(props: GlobeViewProps) {
     let name = "";
     let color = "#3b82f6";
     let isNew = false;
+
+    if (pick.kind === "ocean") {
+      // tapping water names the ocean and offers a dive
+      const ocean = OCEAN_BY_ID.get(pick.id as OceanId);
+      if (!ocean) return;
+      s.speakHebrew(ocean.nameHebrew);
+      setActiveBubble({ id: pick.id, kind: "ocean", name: `${ocean.emoji} ${ocean.nameHebrew}`, color: ocean.color });
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = setTimeout(() => setActiveBubble(null), 3400);
+      return;
+    }
 
     if (pick.kind === "continents") {
       const continent = CONTINENTS.find((c) => c.id === pick.id);
@@ -210,10 +225,13 @@ export default function GlobeView(props: GlobeViewProps) {
   const openCard = useCallback(() => {
     if (!activeBubble) return;
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    if (activeBubble.kind === "continents") setContinentCardId(activeBubble.id);
+    if (activeBubble.kind === "ocean") setOceanCardId(activeBubble.id as OceanId);
+    else if (activeBubble.kind === "continents") setContinentCardId(activeBubble.id);
     else setCountryCardId(activeBubble.id);
     setActiveBubble(null);
   }, [activeBubble]);
+
+  const oceanCard = oceanCardId ? OCEAN_BY_ID.get(oceanCardId) : undefined;
 
   if (webglFailed) {
     return (
@@ -432,6 +450,92 @@ export default function GlobeView(props: GlobeViewProps) {
         playSfx={props.playSfx}
         countriesDiscovered={countriesDiscovery.discovered}
       />
+
+      {/* Ocean card: fact + dive-in button */}
+      <InfoSheetOcean
+        oceanCard={oceanCard ?? null}
+        onClose={() => setOceanCardId(null)}
+        speakHebrew={props.speakHebrew}
+        playSfx={props.playSfx}
+        onDive={(id) => {
+          setOceanCardId(null);
+          props.onDiveOcean(id);
+        }}
+      />
     </div>
+  );
+}
+
+function InfoSheetOcean({
+  oceanCard,
+  onClose,
+  speakHebrew,
+  playSfx,
+  onDive,
+}: {
+  oceanCard: OceanSpec | null;
+  onClose: () => void;
+  speakHebrew: (t: string) => void;
+  playSfx: (n: SfxName) => void;
+  onDive: (id: OceanId) => void;
+}) {
+  return (
+    <InfoSheet open={!!oceanCard} onClose={onClose} accentColor={oceanCard?.color ?? "#0e7490"}>
+      {oceanCard && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ fontSize: 50 }}>{oceanCard.emoji}</span>
+            <div
+              style={{ fontWeight: 900, fontSize: 27, color: "#0f172a", cursor: "pointer" }}
+              onClick={() => speakHebrew(oceanCard.nameHebrew)}
+            >
+              {oceanCard.nameHebrew} 🔊
+            </div>
+          </div>
+          <div
+            onClick={() => {
+              playSfx("pop");
+              speakHebrew(oceanCard.factHebrew);
+            }}
+            style={{
+              marginTop: 14,
+              background: "linear-gradient(135deg,#cffafe,#a5f3fc)",
+              borderRadius: 16,
+              padding: "12px 16px",
+              fontWeight: 700,
+              fontSize: 17,
+              color: "#155e75",
+              cursor: "pointer",
+              lineHeight: 1.45,
+            }}
+          >
+            💡 {oceanCard.factHebrew} <span style={{ fontSize: 14 }}>🔊</span>
+          </div>
+          <button
+            data-testid="dive-button"
+            onClick={() => {
+              playSfx("whoosh");
+              onDive(oceanCard.id);
+            }}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              border: "none",
+              borderRadius: 18,
+              background: `linear-gradient(135deg, ${oceanCard.color}, #164e63)`,
+              color: "white",
+              fontFamily: "Heebo, sans-serif",
+              fontWeight: 900,
+              fontSize: 19,
+              padding: "14px 20px",
+              cursor: "pointer",
+              boxShadow: `0 8px 24px ${oceanCard.color}66`,
+            }}
+          >
+            🤿 צוללים פנימה לפגוש את החיות!
+          </button>
+        </div>
+      )}
+    </InfoSheet>
   );
 }

@@ -5,6 +5,7 @@ import GlobeView from "./components/Globe/GlobeView";
 import Map2DView from "./components/WorldMap/Map2DView";
 import IsraelMap from "./components/WorldMap/IsraelMap";
 import SolarSystemView from "./components/Space/SolarSystemView";
+import OceanDiveView from "./components/Ocean/OceanDiveView";
 import QuizView from "./components/Quiz/QuizView";
 import StickerAlbum from "./components/Album/StickerAlbum";
 import StickerCelebration from "./components/Album/StickerCelebration";
@@ -19,9 +20,11 @@ import { CONTINENTS } from "./data/continents";
 import { COUNTRIES } from "./data/countries";
 import { TOTAL_ISRAEL_CITIES } from "./data/israelCities";
 import { TOTAL_SPACE_OBJECTS } from "./data/planets";
+import { TOTAL_MARINE_CREATURES } from "./data/marineLife";
+import type { OceanId } from "./data/oceans";
 import { STICKERS } from "./lib/stickers";
 
-type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "quiz" | "album";
+type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "ocean" | "quiz" | "album";
 type WorldMode = "continents" | "countries";
 
 const SCREEN_LABELS: Record<Screen, string> = {
@@ -30,6 +33,7 @@ const SCREEN_LABELS: Record<Screen, string> = {
   map2d: "מפה שטוחה",
   israel: "ערי ישראל",
   space: "מערכת השמש",
+  ocean: "עולם האוקיינוס",
   quiz: "חידון",
   album: "אלבום מדבקות",
 };
@@ -54,6 +58,7 @@ export default function App() {
   const [worldMode, setWorldMode] = useState<WorldMode>("continents");
   const [gateOpen, setGateOpen] = useState(false);
   const [flight, setFlight] = useState<Flight | null>(null);
+  const [oceanStart, setOceanStart] = useState<OceanId | undefined>(undefined);
 
   const { isMuted, toggleMute, speakHebrew, speakLang } = useAudio();
   const { play } = useSfx(isMuted);
@@ -63,6 +68,7 @@ export default function App() {
   const israelDiscovery = useDiscovery("israel");
   const planetsDiscovery = useDiscovery("planets");
   const constellationsDiscovery = useDiscovery("constellations");
+  const oceanDiscovery = useDiscovery("ocean");
 
   const progressSnapshot = useMemo(
     () => ({
@@ -71,6 +77,7 @@ export default function App() {
       israelDiscovered: israelDiscovery.totalDiscovered,
       planetsDiscovered: planetsDiscovery.totalDiscovered,
       constellationsDiscovered: constellationsDiscovery.totalDiscovered,
+      oceanDiscovered: oceanDiscovery.discovered,
     }),
     [
       continentsDiscovery.discovered,
@@ -78,6 +85,7 @@ export default function App() {
       israelDiscovery.totalDiscovered,
       planetsDiscovery.totalDiscovered,
       constellationsDiscovery.totalDiscovered,
+      oceanDiscovery.discovered,
     ]
   );
 
@@ -88,7 +96,8 @@ export default function App() {
     countriesDiscovery.totalDiscovered +
     israelDiscovery.totalDiscovered +
     planetsDiscovery.totalDiscovered +
-    constellationsDiscovery.totalDiscovered;
+    constellationsDiscovery.totalDiscovered +
+    oceanDiscovery.totalDiscovered;
 
   const activeWorldDiscovery = worldMode === "continents" ? continentsDiscovery : countriesDiscovery;
 
@@ -118,12 +127,15 @@ export default function App() {
         return { count: israelDiscovery.totalDiscovered, total: TOTAL_ISRAEL_CITIES };
       case "space":
         return { count: planetsDiscovery.totalDiscovered, total: TOTAL_SPACE_OBJECTS };
+      case "ocean":
+        return { count: oceanDiscovery.totalDiscovered, total: TOTAL_MARINE_CREATURES };
       default:
         return null;
     }
   })();
 
-  const canReset = screen === "globe" || screen === "map2d" || screen === "israel" || screen === "space";
+  const canReset =
+    screen === "globe" || screen === "map2d" || screen === "israel" || screen === "space" || screen === "ocean";
 
   const doReset = useCallback(() => {
     setGateOpen(false);
@@ -131,9 +143,10 @@ export default function App() {
     else if (screen === "space") {
       planetsDiscovery.resetProgress();
       constellationsDiscovery.resetProgress();
-    } else activeWorldDiscovery.resetProgress();
+    } else if (screen === "ocean") oceanDiscovery.resetProgress();
+    else activeWorldDiscovery.resetProgress();
     speakHebrew("ההתקדמות אופסה. יוצאים להרפתקה חדשה!");
-  }, [screen, israelDiscovery, planetsDiscovery, constellationsDiscovery, activeWorldDiscovery, speakHebrew]);
+  }, [screen, israelDiscovery, planetsDiscovery, constellationsDiscovery, oceanDiscovery, activeWorldDiscovery, speakHebrew]);
 
   // ── Home ──
   if (screen === "home") {
@@ -244,6 +257,10 @@ export default function App() {
           markSeasonSeen={stickers.markSeasonSeen}
           onGoTo2D={() => setScreen("map2d")}
           onGoSpace={() => goWithRocket("space")}
+          onDiveOcean={(ocean) => {
+            setOceanStart(ocean);
+            setScreen("ocean");
+          }}
         />
       )}
 
@@ -278,6 +295,15 @@ export default function App() {
           speakHebrew={speakHebrew}
           playSfx={play}
           onBackToEarth={() => goWithRocket("globe")}
+        />
+      )}
+
+      {screen === "ocean" && (
+        <OceanDiveView
+          oceanDiscovery={oceanDiscovery}
+          speakHebrew={speakHebrew}
+          playSfx={play}
+          initialOcean={oceanStart}
         />
       )}
 

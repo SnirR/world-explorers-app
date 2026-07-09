@@ -17,13 +17,14 @@ import type { GeoPermissibleObjects } from "d3-geo";
 import { CONTINENTS } from "../data/continents";
 import { getContinentId } from "../data/continentMapping";
 import { COUNTRY_BY_ID } from "../data/countries";
+import { oceanAt } from "../data/oceans";
 import type { SeasonSpec } from "../data/seasons";
 import { makeStarField, addNebulae, makeAtmosphere, mulberry32 } from "./proceduralTextures";
 
 export type GlobeMode = "continents" | "countries";
 
 export interface GlobePick {
-  kind: GlobeMode;
+  kind: GlobeMode | "ocean";
   id: string;
   screenX: number;
   screenY: number;
@@ -738,7 +739,10 @@ export class GlobeScene {
         best = f;
       }
     }
-    return best ? this.pickFromFeature(best, clientX, clientY) : null;
+    if (best) return this.pickFromFeature(best, clientX, clientY);
+
+    // No land anywhere near → the child tapped an ocean 🌊
+    return { kind: "ocean", id: oceanAt(lat, lng), screenX: clientX, screenY: clientY };
   }
 
   private pickFromFeature(f: CountryFeature, screenX: number, screenY: number): GlobePick | null {

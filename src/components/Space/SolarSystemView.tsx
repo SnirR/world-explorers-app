@@ -5,12 +5,15 @@ import { SolarSystemScene, type SpacePick } from "../../three/SolarSystemScene";
 import { loadWorldTopo } from "../../three/loadWorldTopo";
 import { makeEarthTexture } from "../../three/earthPainter";
 import { PLANET_BY_ID, TOTAL_SPACE_OBJECTS } from "../../data/planets";
+import { SPACE_OBJECT_BY_ID } from "../../data/spaceObjects";
+import { CONSTELLATION_BY_ID, TOTAL_CONSTELLATIONS } from "../../data/constellations";
 import type { DiscoveryState } from "../../hooks/useDiscovery";
 import type { SfxName } from "../../hooks/useSfx";
 import NameRevealBubble from "../WorldMap/NameRevealBubble";
 import ConfettiEffect from "../Overlays/ConfettiEffect";
 import MilestoneModal from "../Overlays/MilestoneModal";
 import PlanetCard from "../Cards/PlanetCard";
+import ConstellationCard from "../Cards/ConstellationCard";
 
 const roundBtn: React.CSSProperties = {
   width: 48,
@@ -31,6 +34,7 @@ const roundBtn: React.CSSProperties = {
 
 interface SolarSystemViewProps {
   planetsDiscovery: DiscoveryState;
+  constellationsDiscovery: DiscoveryState;
   speakHebrew: (text: string) => void;
   playSfx: (name: SfxName) => void;
   onBackToEarth: () => void;
@@ -38,6 +42,7 @@ interface SolarSystemViewProps {
 
 export default function SolarSystemView({
   planetsDiscovery,
+  constellationsDiscovery,
   speakHebrew,
   playSfx,
   onBackToEarth,
@@ -52,26 +57,60 @@ export default function SolarSystemView({
   const [confettiOrigin, setConfettiOrigin] = useState({ x: 0.5, y: 0.5 });
   const [milestone, setMilestone] = useState<string | null>(null);
   const [cardId, setCardId] = useState<string | null>(null);
+  const [constCardId, setConstCardId] = useState<string | null>(null);
+  const [wish, setWish] = useState(false);
 
-  const stateRef = useRef({ planetsDiscovery, playSfx, speakHebrew });
+  const stateRef = useRef({ planetsDiscovery, constellationsDiscovery, playSfx, speakHebrew });
   useEffect(() => {
-    stateRef.current = { planetsDiscovery, playSfx, speakHebrew };
-  }, [planetsDiscovery, playSfx, speakHebrew]);
+    stateRef.current = { planetsDiscovery, constellationsDiscovery, playSfx, speakHebrew };
+  }, [planetsDiscovery, constellationsDiscovery, playSfx, speakHebrew]);
 
   const handlePick = useCallback((pick: SpacePick | null) => {
     const s = stateRef.current;
     if (!pick) {
+      // tapping empty sky while a shooting star streaks by = making a wish ✨
+      if (engineRef.current?.hasActiveMeteor()) {
+        s.playSfx("sparkle");
+        s.speakHebrew("כוכב נופל! מהר, תבקשו משאלה!");
+        setWish(true);
+        setTimeout(() => setWish(false), 2600);
+        return;
+      }
       engineRef.current?.focusBody(null);
       return;
     }
-    const planet = PLANET_BY_ID.get(pick.id);
-    if (!planet) return;
+
+    // ── constellation tap ──
+    if (pick.id.startsWith("const-")) {
+      const c = CONSTELLATION_BY_ID.get(pick.id);
+      if (!c) return;
+      s.playSfx("pop");
+      const isNew = s.constellationsDiscovery.discover(pick.id);
+      s.speakHebrew(c.nameHebrew);
+      engineRef.current?.highlightConstellation(pick.id);
+      setActiveBubble({ id: pick.id, name: `${c.emoji} ${c.nameHebrew}`, color: "#6d6ff0" });
+      if (isNew) {
+        s.playSfx("chime");
+        setConfettiOrigin({ x: pick.screenX / window.innerWidth, y: pick.screenY / window.innerHeight });
+        setConfettiTrigger((p) => p + 1);
+        if (s.constellationsDiscovery.discovered.size + 1 === TOTAL_CONSTELLATIONS) {
+          setTimeout(() => setMilestone("גילית את כל המזלות בשמיים! 🔭✨"), 1600);
+        }
+      }
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = setTimeout(() => setActiveBubble(null), 3400);
+      return;
+    }
+
+    // ── planet / space-object tap ──
+    const body = PLANET_BY_ID.get(pick.id) ?? SPACE_OBJECT_BY_ID.get(pick.id);
+    if (!body) return;
 
     s.playSfx("pop");
     const isNew = s.planetsDiscovery.discover(pick.id);
-    s.speakHebrew(planet.nameHebrew);
+    s.speakHebrew(body.nameHebrew);
     engineRef.current?.focusBody(pick.id);
-    setActiveBubble({ id: pick.id, name: planet.nameHebrew, color: planet.baseColor });
+    setActiveBubble({ id: pick.id, name: body.nameHebrew, color: body.baseColor });
 
     if (isNew) {
       s.playSfx("chime");
@@ -101,6 +140,7 @@ export default function SolarSystemView({
         try {
           scene = new SolarSystemScene(containerRef.current, {
             discovered: stateRef.current.planetsDiscovery.discovered,
+            constellationsDiscovered: stateRef.current.constellationsDiscovery.discovered,
             reducedMotion:
               typeof window.matchMedia === "function" &&
               window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -123,6 +163,10 @@ export default function SolarSystemView({
   useEffect(() => {
     engineRef.current?.setDiscovered(planetsDiscovery.discovered);
   }, [planetsDiscovery.discovered]);
+
+  useEffect(() => {
+    engineRef.current?.setConstellationsDiscovered(constellationsDiscovery.discovered);
+  }, [constellationsDiscovery.discovered]);
 
   const dismissBubble = useCallback(() => {
     setActiveBubble(null);
@@ -186,7 +230,35 @@ export default function SolarSystemView({
         }}
       >
         🪐 גיליתם {planetsDiscovery.discovered.size} מתוך {TOTAL_SPACE_OBJECTS} בחלל
+        <span style={{ opacity: 0.75, marginRight: 8 }}>
+          🔭 {constellationsDiscovery.discovered.size}/{TOTAL_CONSTELLATIONS} מזלות
+        </span>
       </div>
+
+      {/* Shooting-star wish toast */}
+      {wish && (
+        <div
+          style={{
+            position: "absolute",
+            top: "38%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 25,
+            background: "linear-gradient(135deg,#fbbf24,#f59e0b)",
+            borderRadius: 20,
+            padding: "12px 26px",
+            fontFamily: "Heebo, sans-serif",
+            fontWeight: 900,
+            fontSize: 19,
+            color: "#451a03",
+            direction: "rtl",
+            boxShadow: "0 8px 30px rgba(245,158,11,0.6)",
+            pointerEvents: "none",
+          }}
+        >
+          ⭐ כוכב נופל — תבקשו משאלה! ✨
+        </div>
+      )}
 
       {/* Zoom controls */}
       <div style={{ position: "absolute", bottom: 20, left: 16, display: "flex", flexDirection: "column", gap: 8, zIndex: 20 }}>
@@ -232,7 +304,8 @@ export default function SolarSystemView({
           activeBubble
             ? () => {
                 if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-                setCardId(activeBubble.id);
+                if (activeBubble.id.startsWith("const-")) setConstCardId(activeBubble.id);
+                else setCardId(activeBubble.id);
                 setActiveBubble(null);
               }
             : undefined
@@ -245,6 +318,12 @@ export default function SolarSystemView({
       <PlanetCard
         planetId={cardId}
         onClose={() => setCardId(null)}
+        speakHebrew={speakHebrew}
+        playSfx={playSfx}
+      />
+      <ConstellationCard
+        constellationId={constCardId}
+        onClose={() => setConstCardId(null)}
         speakHebrew={speakHebrew}
         playSfx={playSfx}
       />

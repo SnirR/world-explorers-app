@@ -137,7 +137,7 @@ test("solar system: rocket flies, sun is tappable, planet card opens, back to Ea
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
   await expect(page.getByText("השמש", { exact: true })).toBeVisible({ timeout: 5_000 });
-  await expect(page.getByText(/מתוך 11 בחלל/)).toContainText("1 מתוך");
+  await expect(page.getByText(/מתוך 14 בחלל/)).toContainText("1 מתוך");
 
   // Planet card via עוד!
   await page.getByRole("button", { name: "עוד! 👀" }).click();

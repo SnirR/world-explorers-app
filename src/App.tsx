@@ -62,6 +62,7 @@ export default function App() {
   const countriesDiscovery = useDiscovery("countries");
   const israelDiscovery = useDiscovery("israel");
   const planetsDiscovery = useDiscovery("planets");
+  const constellationsDiscovery = useDiscovery("constellations");
 
   const progressSnapshot = useMemo(
     () => ({
@@ -69,12 +70,14 @@ export default function App() {
       countriesDiscovered: countriesDiscovery.discovered,
       israelDiscovered: israelDiscovery.totalDiscovered,
       planetsDiscovered: planetsDiscovery.totalDiscovered,
+      constellationsDiscovered: constellationsDiscovery.totalDiscovered,
     }),
     [
       continentsDiscovery.discovered,
       countriesDiscovery.discovered,
       israelDiscovery.totalDiscovered,
       planetsDiscovery.totalDiscovered,
+      constellationsDiscovery.totalDiscovered,
     ]
   );
 
@@ -84,7 +87,8 @@ export default function App() {
     continentsDiscovery.totalDiscovered +
     countriesDiscovery.totalDiscovered +
     israelDiscovery.totalDiscovered +
-    planetsDiscovery.totalDiscovered;
+    planetsDiscovery.totalDiscovered +
+    constellationsDiscovery.totalDiscovered;
 
   const activeWorldDiscovery = worldMode === "continents" ? continentsDiscovery : countriesDiscovery;
 
@@ -124,10 +128,12 @@ export default function App() {
   const doReset = useCallback(() => {
     setGateOpen(false);
     if (screen === "israel") israelDiscovery.resetProgress();
-    else if (screen === "space") planetsDiscovery.resetProgress();
-    else activeWorldDiscovery.resetProgress();
+    else if (screen === "space") {
+      planetsDiscovery.resetProgress();
+      constellationsDiscovery.resetProgress();
+    } else activeWorldDiscovery.resetProgress();
     speakHebrew("ההתקדמות אופסה. יוצאים להרפתקה חדשה!");
-  }, [screen, israelDiscovery, planetsDiscovery, activeWorldDiscovery, speakHebrew]);
+  }, [screen, israelDiscovery, planetsDiscovery, constellationsDiscovery, activeWorldDiscovery, speakHebrew]);
 
   // ── Home ──
   if (screen === "home") {
@@ -267,6 +273,7 @@ export default function App() {
       {screen === "space" && (
         <SolarSystemView
           planetsDiscovery={planetsDiscovery}
+          constellationsDiscovery={constellationsDiscovery}
           speakHebrew={speakHebrew}
           playSfx={play}
           onBackToEarth={() => goWithRocket("globe")}

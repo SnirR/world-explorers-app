@@ -4,6 +4,7 @@ import { CONTINENTS } from "../data/continents";
 import { COUNTRIES } from "../data/countries";
 import { TOTAL_ISRAEL_CITIES } from "../data/israelCities";
 import { TOTAL_SPACE_OBJECTS } from "../data/planets";
+import { TOTAL_CONSTELLATIONS } from "../data/constellations";
 
 export interface StickerDef {
   id: string;
@@ -19,6 +20,8 @@ export interface ProgressSnapshot {
   planetsDiscovered: number;
   languagesLearned: number;
   goldMedals: number;
+  /** 3.0 additions — optional so older callers/tests keep working. */
+  constellationsDiscovered?: number;
 }
 
 const CONTINENT_STICKERS: StickerDef[] = [
@@ -38,6 +41,7 @@ export const STICKERS: StickerDef[] = [
   ...CONTINENT_STICKERS,
   { id: "st-israel",    emoji: "🇮🇱", nameHebrew: "מלך ישראל",     howHebrew: "גלו את כל ערי ישראל" },
   { id: "st-astronaut", emoji: "👨‍🚀", nameHebrew: "אסטרונאוט",     howHebrew: "גלו את כל מערכת השמש" },
+  { id: "st-stargazer", emoji: "🔭", nameHebrew: "צופה כוכבים",   howHebrew: "גלו את כל המזלות בשמי החלל" },
   { id: "st-linguist",  emoji: "🗣️", nameHebrew: "בלשן קטן",      howHebrew: "האזינו למילים ב-5 שפות" },
   { id: "st-quiz",      emoji: "🥇", nameHebrew: "אלוף החידונים",  howHebrew: "השיגו 3 מדליות זהב בחידונים" },
 ];
@@ -75,6 +79,7 @@ export function computeUnlockedStickers(p: ProgressSnapshot): Set<string> {
 
   if (p.israelDiscovered >= TOTAL_ISRAEL_CITIES) unlocked.add("st-israel");
   if (p.planetsDiscovered >= TOTAL_SPACE_OBJECTS) unlocked.add("st-astronaut");
+  if ((p.constellationsDiscovered ?? 0) >= TOTAL_CONSTELLATIONS) unlocked.add("st-stargazer");
   if (p.languagesLearned >= 5) unlocked.add("st-linguist");
   if (p.goldMedals >= 3) unlocked.add("st-quiz");
 

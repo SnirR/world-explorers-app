@@ -69,6 +69,7 @@ export default function App() {
   const planetsDiscovery = useDiscovery("planets");
   const constellationsDiscovery = useDiscovery("constellations");
   const oceanDiscovery = useDiscovery("ocean");
+  const visitedDiscovery = useDiscovery("visited");
 
   const progressSnapshot = useMemo(
     () => ({
@@ -78,6 +79,7 @@ export default function App() {
       planetsDiscovered: planetsDiscovery.totalDiscovered,
       constellationsDiscovered: constellationsDiscovery.totalDiscovered,
       oceanDiscovered: oceanDiscovery.discovered,
+      visitedCount: visitedDiscovery.totalDiscovered,
     }),
     [
       continentsDiscovery.discovered,
@@ -86,6 +88,7 @@ export default function App() {
       planetsDiscovery.totalDiscovered,
       constellationsDiscovery.totalDiscovered,
       oceanDiscovery.discovered,
+      visitedDiscovery.totalDiscovered,
     ]
   );
 
@@ -255,6 +258,7 @@ export default function App() {
           wordsHeard={stickers.wordsHeard}
           markWordHeard={stickers.markWordHeard}
           markSeasonSeen={stickers.markSeasonSeen}
+          markVisited={(id) => visitedDiscovery.discover(id)}
           onGoTo2D={() => setScreen("map2d")}
           onGoSpace={() => goWithRocket("space")}
           onDiveOcean={(ocean) => {
@@ -275,6 +279,7 @@ export default function App() {
           playSfx={play}
           wordsHeard={stickers.wordsHeard}
           markWordHeard={stickers.markWordHeard}
+          markVisited={(id) => visitedDiscovery.discover(id)}
           onGoTo3D={() => setScreen("globe")}
         />
       )}

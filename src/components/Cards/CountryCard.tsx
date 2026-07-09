@@ -1,20 +1,27 @@
-// "Passport" card for a country: flag, capital, fun fact, and words in the
-// local language with Hebrew transliteration + native TTS.
+// "Passport" card for a country: flag, capital, fun fact, words in the
+// local language with Hebrew transliteration + native TTS — and a "visit
+// the country" button that opens the 3D diorama.
 
+import { useState } from "react";
 import { COUNTRY_BY_ID } from "../../data/countries";
 import { getCountryDetails, flagEmoji } from "../../data/countryDetails";
 import { LANGUAGE_BY_ID } from "../../data/languages";
 import { CONTINENTS } from "../../data/continents";
+import { DIORAMAS } from "../../data/dioramas";
 import InfoSheet from "./InfoSheet";
+import DioramaView from "../Country/DioramaView";
+import type { SfxName } from "../../hooks/useSfx";
 
 interface CountryCardProps {
   countryId: string | null;
   onClose: () => void;
   speakHebrew: (text: string) => void;
   speakLang: (text: string, lang: string, fallbackHebrew?: string) => void;
-  playSfx: (name: "pop" | "chime") => void;
+  playSfx: (name: SfxName) => void;
   wordsHeard: (languageId: string) => Set<number>;
   markWordHeard: (languageId: string, wordIndex: number, wordsInPack: number) => void;
+  /** when provided, shows the "visit the country" diorama button */
+  markVisited?: (countryId: string) => void;
 }
 
 const sectionTitle: React.CSSProperties = {
@@ -32,12 +39,26 @@ export default function CountryCard({
   playSfx,
   wordsHeard,
   markWordHeard,
+  markVisited,
 }: CountryCardProps) {
+  const [visiting, setVisiting] = useState(false);
   const country = countryId ? COUNTRY_BY_ID.get(countryId) : undefined;
   const details = countryId ? getCountryDetails(countryId) : undefined;
   const continent = country ? CONTINENTS.find((c) => c.id === country.continentId) : undefined;
   const lang = details ? LANGUAGE_BY_ID.get(details.languageId) : undefined;
   const heard = lang ? wordsHeard(lang.id) : new Set<number>();
+
+  if (visiting && countryId) {
+    return (
+      <DioramaView
+        countryId={countryId}
+        onClose={() => setVisiting(false)}
+        speakHebrew={speakHebrew}
+        playSfx={playSfx}
+        markVisited={markVisited ?? (() => {})}
+      />
+    );
+  }
 
   return (
     <InfoSheet open={!!country && !!details} onClose={onClose} accentColor={continent?.color ?? "#3b82f6"}>
@@ -113,6 +134,33 @@ export default function CountryCard({
           >
             💡 {details.factHebrew} <span style={{ fontSize: 14 }}>🔊</span>
           </div>
+
+          {/* Visit the country — opens the 3D diorama */}
+          {markVisited && (
+            <button
+              data-testid="visit-country"
+              onClick={() => {
+                playSfx("whoosh");
+                setVisiting(true);
+              }}
+              style={{
+                marginTop: 12,
+                width: "100%",
+                border: "none",
+                borderRadius: 18,
+                background: "linear-gradient(135deg,#8b5cf6,#6366f1)",
+                color: "white",
+                fontFamily: "Heebo, sans-serif",
+                fontWeight: 900,
+                fontSize: 18,
+                padding: "13px 20px",
+                cursor: "pointer",
+                boxShadow: "0 8px 24px rgba(99,102,241,0.5)",
+              }}
+            >
+              🚪 בקרו במדינה בתלת־ממד!{DIORAMAS[countryId ?? ""] ? " 🏛️" : " ✨"}
+            </button>
+          )}
 
           {/* Language words */}
           {lang && (

@@ -25,6 +25,7 @@ export interface ProgressSnapshot {
   constellationsDiscovered?: number;
   seasonsSeen?: number;
   oceanDiscovered?: Set<string>;
+  visitedCount?: number;
 }
 
 const CONTINENT_STICKERS: StickerDef[] = [
@@ -49,6 +50,7 @@ export const STICKERS: StickerDef[] = [
   { id: "st-dolphin",   emoji: "🐬", nameHebrew: "חבר הדולפינים", howHebrew: "גלו 15 חיות ים" },
   { id: "st-deep",      emoji: "🐙", nameHebrew: "חוקר מעמקים",   howHebrew: "גלו את כל יצורי המצולות האפלות" },
   { id: "st-ocean",     emoji: "🌊", nameHebrew: "מלך הים",       howHebrew: "גלו את כל חיות הים" },
+  { id: "st-tourist",   emoji: "🧳", nameHebrew: "תייר עולמי",    howHebrew: "בקרו ב-10 מדינות בתלת־ממד" },
   { id: "st-linguist",  emoji: "🗣️", nameHebrew: "בלשן קטן",      howHebrew: "האזינו למילים ב-5 שפות" },
   { id: "st-quiz",      emoji: "🥇", nameHebrew: "אלוף החידונים",  howHebrew: "השיגו 3 מדליות זהב בחידונים" },
 ];
@@ -95,6 +97,7 @@ export function computeUnlockedStickers(p: ProgressSnapshot): Set<string> {
   if (ocean.size >= 15) unlocked.add("st-dolphin");
   if (DEEP_CREATURE_IDS.every((id) => ocean.has(id))) unlocked.add("st-deep");
   if (ocean.size >= TOTAL_MARINE_CREATURES) unlocked.add("st-ocean");
+  if ((p.visitedCount ?? 0) >= 10) unlocked.add("st-tourist");
   if (p.languagesLearned >= 5) unlocked.add("st-linguist");
   if (p.goldMedals >= 3) unlocked.add("st-quiz");
 

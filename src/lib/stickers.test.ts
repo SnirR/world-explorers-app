@@ -119,3 +119,13 @@ describe("ocean stickers", () => {
     expect(u.has("st-ocean")).toBe(false);
   });
 });
+
+describe("tourist sticker", () => {
+  it("unlocks after visiting 10 countries in 3D", () => {
+    const p = empty();
+    p.visitedCount = 9;
+    expect(computeUnlockedStickers(p).has("st-tourist")).toBe(false);
+    p.visitedCount = 10;
+    expect(computeUnlockedStickers(p).has("st-tourist")).toBe(true);
+  });
+});

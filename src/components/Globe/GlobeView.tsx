@@ -46,6 +46,7 @@ interface GlobeViewProps {
   wordsHeard: (languageId: string) => Set<number>;
   markWordHeard: (languageId: string, wordIndex: number, wordsInPack: number) => void;
   markSeasonSeen: (id: SeasonId) => void;
+  markVisited: (countryId: string) => void;
   onGoTo2D: () => void;
   onGoSpace: () => void;
   onDiveOcean: (ocean: OceanId) => void;
@@ -437,6 +438,7 @@ export default function GlobeView(props: GlobeViewProps) {
       <CountryCard
         countryId={countryCardId}
         onClose={() => setCountryCardId(null)}
+        markVisited={props.markVisited}
         speakHebrew={props.speakHebrew}
         speakLang={props.speakLang}
         playSfx={props.playSfx}

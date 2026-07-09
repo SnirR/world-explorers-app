@@ -20,6 +20,7 @@ interface Map2DViewProps {
   playSfx: (name: SfxName) => void;
   wordsHeard: (languageId: string) => Set<number>;
   markWordHeard: (languageId: string, wordIndex: number, wordsInPack: number) => void;
+  markVisited: (countryId: string) => void;
   onGoTo3D: () => void;
 }
 
@@ -121,6 +122,7 @@ export default function Map2DView(props: Map2DViewProps) {
       <CountryCard
         countryId={countryCardId}
         onClose={() => setCountryCardId(null)}
+        markVisited={props.markVisited}
         speakHebrew={props.speakHebrew}
         speakLang={props.speakLang}
         playSfx={props.playSfx}

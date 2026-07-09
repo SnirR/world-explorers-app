@@ -78,3 +78,20 @@ describe("levelFor", () => {
     expect(levelFor(500).nameHebrew).toBe("אלוף העולם");
   });
 });
+
+describe("3.0 stickers (stargazer / seasons)", () => {
+  it("stargazer unlocks when all constellations are found", () => {
+    const p = empty();
+    expect(computeUnlockedStickers(p).has("st-stargazer")).toBe(false);
+    p.constellationsDiscovered = 10;
+    expect(computeUnlockedStickers(p).has("st-stargazer")).toBe(true);
+  });
+
+  it("seasons sticker unlocks after exploring all four seasons", () => {
+    const p = empty();
+    p.seasonsSeen = 3;
+    expect(computeUnlockedStickers(p).has("st-seasons")).toBe(false);
+    p.seasonsSeen = 4;
+    expect(computeUnlockedStickers(p).has("st-seasons")).toBe(true);
+  });
+});

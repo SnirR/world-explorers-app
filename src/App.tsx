@@ -241,6 +241,7 @@ export default function App() {
           playSfx={play}
           wordsHeard={stickers.wordsHeard}
           markWordHeard={stickers.markWordHeard}
+          markSeasonSeen={stickers.markSeasonSeen}
           onGoTo2D={() => setScreen("map2d")}
           onGoSpace={() => goWithRocket("space")}
         />

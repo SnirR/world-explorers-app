@@ -1,4 +1,4 @@
-// Sticker album + language-learning + quiz-medal persistence.
+// Sticker album + language-learning + quiz-medal + seasons persistence.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { computeUnlockedStickers, STICKER_BY_ID, type ProgressSnapshot } from "../lib/stickers";
@@ -6,6 +6,7 @@ import { computeUnlockedStickers, STICKER_BY_ID, type ProgressSnapshot } from ".
 const SEEN_KEY = "world-explorers-stickers-seen";      // stickers whose unlock celebration was shown
 const LANGS_KEY = "world-explorers-languages";          // per-language set of heard word indexes
 const QUIZ_KEY = "world-explorers-quiz";                // { goldMedals, bestByCategory }
+const SEASONS_KEY = "world-explorers-seasons-seen";     // season ids the child explored
 
 function loadJSON<T>(key: string, def: T): T {
   try {
@@ -36,21 +37,27 @@ export interface StickerState {
   languagesLearnedCount: number;
   markWordHeard: (languageId: string, wordIndex: number, wordsInPack: number) => void;
   wordsHeard: (languageId: string) => Set<number>;
+  /** Seasons exploration */
+  markSeasonSeen: (id: string) => void;
   /** Quiz stats */
   quizStats: QuizStats;
   recordQuizResult: (category: string, stars: number, isGold: boolean) => void;
 }
 
-export function useStickers(progress: Omit<ProgressSnapshot, "languagesLearned" | "goldMedals">): StickerState {
+export function useStickers(
+  progress: Omit<ProgressSnapshot, "languagesLearned" | "goldMedals" | "seasonsSeen">
+): StickerState {
   const [langMap, setLangMap] = useState<Record<string, number[]>>(() => loadJSON(LANGS_KEY, {}));
   const [quizStats, setQuizStats] = useState<QuizStats>(() =>
     loadJSON(QUIZ_KEY, { goldMedals: 0, bestStars: {} })
   );
   const [seen, setSeen] = useState<string[]>(() => loadJSON(SEEN_KEY, []));
+  const [seasonsSeen, setSeasonsSeen] = useState<string[]>(() => loadJSON(SEASONS_KEY, []));
 
   useEffect(() => saveJSON(LANGS_KEY, langMap), [langMap]);
   useEffect(() => saveJSON(QUIZ_KEY, quizStats), [quizStats]);
   useEffect(() => saveJSON(SEEN_KEY, seen), [seen]);
+  useEffect(() => saveJSON(SEASONS_KEY, seasonsSeen), [seasonsSeen]);
 
   const languagesLearnedCount = useMemo(
     () => Object.entries(langMap).filter(([, arr]) => arr.length >= 4).length,
@@ -63,8 +70,9 @@ export function useStickers(progress: Omit<ProgressSnapshot, "languagesLearned" 
         ...progress,
         languagesLearned: languagesLearnedCount,
         goldMedals: quizStats.goldMedals,
+        seasonsSeen: seasonsSeen.length,
       }),
-    [progress, languagesLearnedCount, quizStats.goldMedals]
+    [progress, languagesLearnedCount, quizStats.goldMedals, seasonsSeen.length]
   );
 
   const pendingCelebration = useMemo(() => {
@@ -92,6 +100,10 @@ export function useStickers(progress: Omit<ProgressSnapshot, "languagesLearned" 
     [langMap]
   );
 
+  const markSeasonSeen = useCallback((id: string) => {
+    setSeasonsSeen((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
   const recordQuizResult = useCallback((category: string, stars: number, isGold: boolean) => {
     setQuizStats((prev) => ({
       goldMedals: prev.goldMedals + (isGold ? 1 : 0),
@@ -109,6 +121,7 @@ export function useStickers(progress: Omit<ProgressSnapshot, "languagesLearned" 
     languagesLearnedCount,
     markWordHeard,
     wordsHeard,
+    markSeasonSeen,
     quizStats,
     recordQuizResult,
   };

@@ -6,6 +6,7 @@ import { GlobeScene, type GlobeMode, type GlobePick } from "../../three/GlobeSce
 import { loadWorldTopo } from "../../three/loadWorldTopo";
 import { CONTINENTS } from "../../data/continents";
 import { COUNTRIES, COUNTRY_BY_ID, getCountryColor } from "../../data/countries";
+import { SEASON_BY_ID, type SeasonId } from "../../data/seasons";
 import type { DiscoveryState } from "../../hooks/useDiscovery";
 import type { SfxName } from "../../hooks/useSfx";
 import NameRevealBubble from "../WorldMap/NameRevealBubble";
@@ -13,6 +14,7 @@ import ConfettiEffect from "../Overlays/ConfettiEffect";
 import MilestoneModal from "../Overlays/MilestoneModal";
 import CountryCard from "../Cards/CountryCard";
 import ContinentCard from "../Cards/ContinentCard";
+import SeasonSlider from "./SeasonSlider";
 
 const roundBtn: React.CSSProperties = {
   width: 48,
@@ -41,6 +43,7 @@ interface GlobeViewProps {
   playSfx: (name: SfxName) => void;
   wordsHeard: (languageId: string) => Set<number>;
   markWordHeard: (languageId: string, wordIndex: number, wordsInPack: number) => void;
+  markSeasonSeen: (id: SeasonId) => void;
   onGoTo2D: () => void;
   onGoSpace: () => void;
 }
@@ -63,6 +66,8 @@ export default function GlobeView(props: GlobeViewProps) {
 
   const [webglFailed, setWebglFailed] = useState(false);
   const [night, setNight] = useState(false);
+  const [season, setSeason] = useState<SeasonId | null>(null);
+  const [seasonsOpen, setSeasonsOpen] = useState(false);
   const [rocketHint, setRocketHint] = useState(false);
   const [activeBubble, setActiveBubble] = useState<{
     id: string;
@@ -192,6 +197,10 @@ export default function GlobeView(props: GlobeViewProps) {
     engineRef.current?.setNight(night);
   }, [night]);
 
+  useEffect(() => {
+    engineRef.current?.setSeason(season ? SEASON_BY_ID.get(season) ?? null : null);
+  }, [season]);
+
   const dismissBubble = useCallback(() => {
     setActiveBubble(null);
     engineRef.current?.setSelected(null);
@@ -310,6 +319,25 @@ export default function GlobeView(props: GlobeViewProps) {
           {night ? "🌞" : "🌙"}
         </button>
         <button
+          style={{
+            ...roundBtn,
+            fontSize: 19,
+            background: seasonsOpen ? "linear-gradient(135deg,#0ea5e9,#6366f1)" : roundBtn.background,
+          }}
+          onClick={() => {
+            props.playSfx("pop");
+            setSeasonsOpen((o) => {
+              if (o) setSeason(null);
+              return !o;
+            });
+          }}
+          aria-label="עונות השנה"
+          title="עונות השנה"
+          data-testid="seasons-button"
+        >
+          🌦️
+        </button>
+        <button
           style={{ ...roundBtn, fontSize: 19 }}
           onClick={() => {
             props.playSfx("pop");
@@ -363,6 +391,17 @@ export default function GlobeView(props: GlobeViewProps) {
           </div>
         )}
       </div>
+
+      {/* Seasons */}
+      {seasonsOpen && (
+        <SeasonSlider
+          season={season}
+          onSeasonChange={setSeason}
+          speakHebrew={props.speakHebrew}
+          playSfx={props.playSfx}
+          markSeasonSeen={props.markSeasonSeen}
+        />
+      )}
 
       {/* Discovery bubble */}
       <NameRevealBubble

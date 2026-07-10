@@ -8,6 +8,7 @@ import SolarSystemView from "./components/Space/SolarSystemView";
 import OceanDiveView from "./components/Ocean/OceanDiveView";
 import LandmarksGallery from "./components/Landmark/LandmarksGallery";
 import LandmarkView from "./components/Landmark/LandmarkView";
+import LearnHub from "./components/Learn/LearnHub";
 import QuizView from "./components/Quiz/QuizView";
 import StickerAlbum from "./components/Album/StickerAlbum";
 import Encyclopedia from "./components/Explorer/Encyclopedia";
@@ -19,6 +20,7 @@ import { useDiscovery } from "./hooks/useDiscovery";
 import { useAudio } from "./hooks/useAudio";
 import { useSfx } from "./hooks/useSfx";
 import { useStickers } from "./hooks/useStickers";
+import { useLearning } from "./hooks/useLearning";
 import { CONTINENTS } from "./data/continents";
 import { COUNTRIES } from "./data/countries";
 import { TOTAL_ISRAEL_CITIES } from "./data/israelCities";
@@ -28,7 +30,7 @@ import type { OceanId } from "./data/oceans";
 import { TOTAL_LANDMARKS } from "./data/landmarks";
 import { STICKERS } from "./lib/stickers";
 
-type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "ocean" | "landmarks" | "quiz" | "album" | "encyclopedia";
+type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "ocean" | "landmarks" | "learn" | "quiz" | "album" | "encyclopedia";
 type WorldMode = "continents" | "countries";
 
 const SCREEN_LABELS: Record<Screen, string> = {
@@ -39,6 +41,7 @@ const SCREEN_LABELS: Record<Screen, string> = {
   space: "מערכת השמש",
   ocean: "עולם האוקיינוס",
   landmarks: "פלאי העולם",
+  learn: "בית הספר הקטן",
   quiz: "חידון",
   album: "אלבום מדבקות",
   encyclopedia: "האנציקלופדיה",
@@ -75,6 +78,7 @@ export default function App() {
 
   const { isMuted, toggleMute, speakHebrew, speakLang } = useAudio();
   const { play } = useSfx(isMuted);
+  const learning = useLearning();
 
   const continentsDiscovery = useDiscovery("continents");
   const countriesDiscovery = useDiscovery("countries");
@@ -286,6 +290,10 @@ export default function App() {
           speakHebrew={speakHebrew}
           playSfx={play}
         />
+      )}
+
+      {screen === "learn" && (
+        <LearnHub learning={learning} speakHebrew={speakHebrew} playSfx={play} />
       )}
 
       {screen === "map2d" && (

@@ -8,7 +8,7 @@ import { levelFor } from "../../lib/stickers";
 
 export type HomeTarget =
   | "globe" | "map2d" | "israel" | "space" | "ocean" | "landmarks"
-  | "quiz" | "album" | "encyclopedia";
+  | "learn" | "quiz" | "album" | "encyclopedia";
 
 interface HomeScreenProps {
   onSelect: (target: HomeTarget) => void;
@@ -218,9 +218,18 @@ export default function HomeScreen({
           testId="home-landmarks"
         />
         <Tile
+          emoji="🎓"
+          label="בית הספר הקטן"
+          sub="חשבון · אותיות · קריאה"
+          gradient="linear-gradient(135deg,#16a34a,#166534)"
+          shadow="0 8px 24px rgba(22,163,74,0.45)"
+          onClick={() => onSelect("learn")}
+          testId="home-learn"
+        />
+        <Tile
           emoji="❓"
           label="חידון"
-          sub="איפה זה על המפה?"
+          sub="8 נושאים לבחירה!"
           gradient="linear-gradient(135deg,#e11d48,#be123c)"
           shadow="0 8px 24px rgba(225,29,72,0.4)"
           onClick={() => onSelect("quiz")}

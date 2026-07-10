@@ -6,6 +6,8 @@ import Map2DView from "./components/WorldMap/Map2DView";
 import IsraelMap from "./components/WorldMap/IsraelMap";
 import SolarSystemView from "./components/Space/SolarSystemView";
 import OceanDiveView from "./components/Ocean/OceanDiveView";
+import LandmarksGallery from "./components/Landmark/LandmarksGallery";
+import LandmarkView from "./components/Landmark/LandmarkView";
 import QuizView from "./components/Quiz/QuizView";
 import StickerAlbum from "./components/Album/StickerAlbum";
 import Encyclopedia from "./components/Explorer/Encyclopedia";
@@ -23,9 +25,10 @@ import { TOTAL_ISRAEL_CITIES } from "./data/israelCities";
 import { TOTAL_SPACE_OBJECTS } from "./data/planets";
 import { TOTAL_MARINE_CREATURES } from "./data/marineLife";
 import type { OceanId } from "./data/oceans";
+import { TOTAL_LANDMARKS } from "./data/landmarks";
 import { STICKERS } from "./lib/stickers";
 
-type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "ocean" | "quiz" | "album" | "encyclopedia";
+type Screen = "home" | "globe" | "map2d" | "israel" | "space" | "ocean" | "landmarks" | "quiz" | "album" | "encyclopedia";
 type WorldMode = "continents" | "countries";
 
 const SCREEN_LABELS: Record<Screen, string> = {
@@ -35,6 +38,7 @@ const SCREEN_LABELS: Record<Screen, string> = {
   israel: "ערי ישראל",
   space: "מערכת השמש",
   ocean: "עולם האוקיינוס",
+  landmarks: "פלאי העולם",
   quiz: "חידון",
   album: "אלבום מדבקות",
   encyclopedia: "האנציקלופדיה",
@@ -61,6 +65,7 @@ export default function App() {
   const [gateOpen, setGateOpen] = useState(false);
   const [flight, setFlight] = useState<Flight | null>(null);
   const [oceanStart, setOceanStart] = useState<OceanId | undefined>(undefined);
+  const [visitingLandmark, setVisitingLandmark] = useState<string | null>(null);
 
   // Local calendar day (YYYY-MM-DD) for the daily challenge — offline, no clock in pure logic.
   const todayStr = useMemo(() => {
@@ -78,6 +83,8 @@ export default function App() {
   const constellationsDiscovery = useDiscovery("constellations");
   const oceanDiscovery = useDiscovery("ocean");
   const visitedDiscovery = useDiscovery("visited");
+  const landmarksDiscovery = useDiscovery("landmarks");
+  const treasuresDiscovery = useDiscovery("treasures");
 
   const progressSnapshot = useMemo(
     () => ({
@@ -108,7 +115,9 @@ export default function App() {
     israelDiscovery.totalDiscovered +
     planetsDiscovery.totalDiscovered +
     constellationsDiscovery.totalDiscovered +
-    oceanDiscovery.totalDiscovered;
+    oceanDiscovery.totalDiscovered +
+    landmarksDiscovery.totalDiscovered +
+    treasuresDiscovery.totalDiscovered;
 
   const activeWorldDiscovery = worldMode === "continents" ? continentsDiscovery : countriesDiscovery;
 
@@ -140,13 +149,16 @@ export default function App() {
         return { count: planetsDiscovery.totalDiscovered, total: TOTAL_SPACE_OBJECTS };
       case "ocean":
         return { count: oceanDiscovery.totalDiscovered, total: TOTAL_MARINE_CREATURES };
+      case "landmarks":
+        return { count: landmarksDiscovery.totalDiscovered, total: TOTAL_LANDMARKS };
       default:
         return null;
     }
   })();
 
   const canReset =
-    screen === "globe" || screen === "map2d" || screen === "israel" || screen === "space" || screen === "ocean";
+    screen === "globe" || screen === "map2d" || screen === "israel" || screen === "space" ||
+    screen === "ocean" || screen === "landmarks";
 
   const doReset = useCallback(() => {
     setGateOpen(false);
@@ -155,9 +167,12 @@ export default function App() {
       planetsDiscovery.resetProgress();
       constellationsDiscovery.resetProgress();
     } else if (screen === "ocean") oceanDiscovery.resetProgress();
-    else activeWorldDiscovery.resetProgress();
+    else if (screen === "landmarks") {
+      landmarksDiscovery.resetProgress();
+      treasuresDiscovery.resetProgress();
+    } else activeWorldDiscovery.resetProgress();
     speakHebrew("ההתקדמות אופסה. יוצאים להרפתקה חדשה!");
-  }, [screen, israelDiscovery, planetsDiscovery, constellationsDiscovery, oceanDiscovery, activeWorldDiscovery, speakHebrew]);
+  }, [screen, israelDiscovery, planetsDiscovery, constellationsDiscovery, oceanDiscovery, landmarksDiscovery, treasuresDiscovery, activeWorldDiscovery, speakHebrew]);
 
   // ── One shared root: the LaunchOverlay must never remount mid-flight when
   // the screen underneath it switches (home ↔ space), so every screen and the
@@ -179,6 +194,7 @@ export default function App() {
             israel: israelDiscovery.totalDiscovered,
             planets: planetsDiscovery.totalDiscovered,
             ocean: oceanDiscovery.totalDiscovered,
+            landmarks: landmarksDiscovery.totalDiscovered,
           }}
           stickersUnlocked={stickers.unlocked.size}
           stickersTotal={STICKERS.length}
@@ -257,6 +273,18 @@ export default function App() {
             setOceanStart(ocean);
             setScreen("ocean");
           }}
+          landmarksVisited={landmarksDiscovery.discovered}
+          onVisitLandmark={(id) => setVisitingLandmark(id)}
+        />
+      )}
+
+      {screen === "landmarks" && (
+        <LandmarksGallery
+          visited={landmarksDiscovery.discovered}
+          treasuresDiscovered={treasuresDiscovery.discovered}
+          onVisit={(id) => setVisitingLandmark(id)}
+          speakHebrew={speakHebrew}
+          playSfx={play}
         />
       )}
 
@@ -343,6 +371,16 @@ export default function App() {
       )}
 
       {/* Overlays */}
+      {visitingLandmark && (
+        <LandmarkView
+          landmarkId={visitingLandmark}
+          onClose={() => setVisitingLandmark(null)}
+          treasuresDiscovery={treasuresDiscovery}
+          onVisited={(id) => landmarksDiscovery.discover(id)}
+          speakHebrew={speakHebrew}
+          playSfx={play}
+        />
+      )}
       <ParentalGate open={gateOpen} onSuccess={doReset} onClose={() => setGateOpen(false)} />
       <StickerCelebration
         stickerId={stickers.pendingCelebration}

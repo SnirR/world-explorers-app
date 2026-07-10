@@ -3,9 +3,12 @@ import { COUNTRIES } from "../../data/countries";
 import { TOTAL_ISRAEL_CITIES } from "../../data/israelCities";
 import { TOTAL_SPACE_OBJECTS } from "../../data/planets";
 import { TOTAL_MARINE_CREATURES } from "../../data/marineLife";
+import { TOTAL_LANDMARKS } from "../../data/landmarks";
 import { levelFor } from "../../lib/stickers";
 
-export type HomeTarget = "globe" | "map2d" | "israel" | "space" | "ocean" | "quiz" | "album" | "encyclopedia";
+export type HomeTarget =
+  | "globe" | "map2d" | "israel" | "space" | "ocean" | "landmarks"
+  | "quiz" | "album" | "encyclopedia";
 
 interface HomeScreenProps {
   onSelect: (target: HomeTarget) => void;
@@ -16,6 +19,7 @@ interface HomeScreenProps {
     israel: number;
     planets: number;
     ocean: number;
+    landmarks: number;
   };
   stickersUnlocked: number;
   stickersTotal: number;
@@ -203,6 +207,15 @@ export default function HomeScreen({
           shadow="0 8px 24px rgba(6,182,212,0.45)"
           onClick={() => onSelect("ocean")}
           testId="home-ocean"
+        />
+        <Tile
+          emoji="🏛️"
+          label="פלאי העולם"
+          sub={`ביקרתם ב-${discoveredPerMode.landmarks} מתוך ${TOTAL_LANDMARKS} מקומות`}
+          gradient="linear-gradient(135deg,#f59e0b,#b45309)"
+          shadow="0 8px 24px rgba(245,158,11,0.45)"
+          onClick={() => onSelect("landmarks")}
+          testId="home-landmarks"
         />
         <Tile
           emoji="❓"

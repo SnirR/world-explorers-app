@@ -159,10 +159,17 @@ export default function App() {
     speakHebrew("ההתקדמות אופסה. יוצאים להרפתקה חדשה!");
   }, [screen, israelDiscovery, planetsDiscovery, constellationsDiscovery, oceanDiscovery, activeWorldDiscovery, speakHebrew]);
 
-  // ── Home ──
-  if (screen === "home") {
-    return (
-      <div className="h-full w-full" style={{ fontFamily: "Heebo, sans-serif" }}>
+  // ── One shared root: the LaunchOverlay must never remount mid-flight when
+  // the screen underneath it switches (home ↔ space), so every screen and the
+  // overlays live under a single stable tree. ──
+  const isSpaceish = screen === "space";
+
+  return (
+    <div
+      className="h-full w-full relative overflow-hidden"
+      style={{ fontFamily: "Heebo, sans-serif", background: isSpaceish ? "#020309" : undefined }}
+    >
+      {screen === "home" && (
         <HomeScreen
           onSelect={handleHomeSelect}
           totalDiscovered={grandTotal}
@@ -176,35 +183,10 @@ export default function App() {
           stickersUnlocked={stickers.unlocked.size}
           stickersTotal={STICKERS.length}
         />
-        <StickerCelebration
-          stickerId={stickers.pendingCelebration}
-          onClose={() => stickers.pendingCelebration && stickers.markCelebrated(stickers.pendingCelebration)}
-          onGoToAlbum={() => {
-            if (stickers.pendingCelebration) stickers.markCelebrated(stickers.pendingCelebration);
-            setScreen("album");
-          }}
-          speakHebrew={speakHebrew}
-          playSfx={play}
-        />
-        <LaunchOverlay
-          flight={flight}
-          onArrive={(to) => setScreen(to as Screen)}
-          onDone={() => setFlight(null)}
-          speakHebrew={speakHebrew}
-        />
-      </div>
-    );
-  }
+      )}
 
-  // ── All other screens share the top bar ──
-  const isSpaceish = screen === "space";
-
-  return (
-    <div
-      className="h-full w-full relative overflow-hidden"
-      style={{ fontFamily: "Heebo, sans-serif", background: isSpaceish ? "#020309" : undefined }}
-    >
-      {/* Top bar */}
+      {/* Top bar (all screens except home) */}
+      {screen !== "home" && (
       <div
         className="absolute top-0 right-0 left-0 z-30 flex items-center justify-between gap-1 p-2"
         style={{ direction: "rtl", pointerEvents: "none" }}
@@ -253,6 +235,7 @@ export default function App() {
           <AudioToggle isMuted={isMuted} onToggle={toggleMute} />
         </div>
       </div>
+      )}
 
       {/* Screens */}
       {screen === "globe" && (

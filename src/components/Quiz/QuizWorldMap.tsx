@@ -44,7 +44,9 @@ interface GeoShape {
 function QuizWorldMapImpl({ kind, hintId, onTap }: QuizWorldMapProps) {
   const [view, setView] = useState(HOME_VIEW);
   const viewRef = useRef(view);
-  viewRef.current = view;
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
   // centroid + angular span per country, captured from the loaded geographies
   const geoInfoRef = useRef(new Map<string, { center: [number, number]; span: number }>());
   const animRef = useRef(0);
@@ -104,7 +106,6 @@ function QuizWorldMapImpl({ kind, hintId, onTap }: QuizWorldMapProps) {
     };
     animRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hintId, kind]);
 
   return (

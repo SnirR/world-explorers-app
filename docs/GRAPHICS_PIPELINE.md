@@ -9,6 +9,15 @@ Entity heroes (animals, landmarks, land sights) use a parallel pack under
 `public/assets/entities/sprites` via `src/three/entityAssets.ts` and
 `npm run process:entities`. Builders prefer painted sprites with procedural fallback.
 
+Entities render as **Y-axis impostors** (lit planes that face the camera horizontally),
+not crossed cardboard planes. Soft ground-shadow discs and optional thickness copies
+help them read as volume. Call `updateEntityImpostors(root, camera)` each frame from
+place scene animate loops.
+
+Optional multi-view angles swap by orbit yaw when files exist:
+`animal-lion.png`, `animal-lion-side.png`, `animal-lion-back.png` (and same for other
+heroes listed in `MULTI_VIEWS` in `entityAssets.ts`).
+
 ---
 
 ## Goal

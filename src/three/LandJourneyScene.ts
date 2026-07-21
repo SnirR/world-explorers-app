@@ -15,7 +15,7 @@ import {
   hasNatureSprite,
   natureBillboard,
 } from "./natureAssets";
-import { hasSightSprite, paintedSight } from "./entityAssets";
+import { hasSightSprite, paintedSight, updateEntityImpostors } from "./entityAssets";
 
 export interface LandPick {
   id: string;
@@ -1697,6 +1697,7 @@ export class LandJourneyScene {
       pz + tz * 6
     );
 
+    updateEntityImpostors(this.world, this.camera);
     this.renderer.render(this.scene, this.camera);
   };
 }

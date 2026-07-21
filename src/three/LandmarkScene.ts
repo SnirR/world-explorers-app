@@ -15,6 +15,7 @@ import {
   hasNatureSprite,
   natureBillboard,
 } from "./natureAssets";
+import { updateEntityImpostors } from "./entityAssets";
 
 export interface LandmarkPick {
   kind: "treasure" | "site";
@@ -453,6 +454,7 @@ export class LandmarkScene {
     this.camera.position.set(0, 3.2 + this.camDist * 0.18, this.camDist);
     this.camera.lookAt(0, 1.9, 0);
 
+    updateEntityImpostors(this.stage, this.camera);
     this.renderer.render(this.scene, this.camera);
   };
 }

@@ -20,6 +20,7 @@ import {
   hasNatureSprite,
   natureBillboard,
 } from "./natureAssets";
+import { updateEntityImpostors } from "./entityAssets";
 
 export type DioramaPickKind = "landmark" | "animal" | "nature";
 
@@ -324,6 +325,7 @@ export class DioramaScene {
       s.position.y += Math.sin(t * 1.3 + i * 1.8) * 0.0035;
     });
 
+    updateEntityImpostors(this.stage, this.camera);
     this.renderer.render(this.scene, this.camera);
   };
 }
